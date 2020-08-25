@@ -1,29 +1,47 @@
 unit class FixedInt:ver<0.0.1>:auth<github:thundergnat>;
-has $!var handles <Str FETCH Numeric gist> = 0;
-has $!bits;
-has $!mask;
+has $.var handles <Str Numeric gist> = 0;
+has $.bits;
+has $.mask;
 
-submethod BUILD (Int :bits(:$bit) = 32) { $!bits = $bit; $!mask = 2**$!bits - 1 }
+submethod BUILD (Int :$var = 0, Int :bits(:$bit) = 32) { $!var = $var; $!bits = $bit; $!mask = 2**$!bits - 1 }
 
-method STORE ($val) { $!var = $val +& $!mask }
+# method STORE ($val) { $!var = $val +& $!mask }
 
 # rotate right
-method ror (Int $bits) { $!var +> $bits +| ($!var +& (2**$bits - 1) +< ($!bits - $bits)) }
+method ror (Int $bits) { 
+    self.clone(:var(
+        $!var +> $bits +| ($!var +& (2**$bits - 1) +< ($!bits - $bits))
+    ))
+}
 
 # rotate left
-method rol (Int $bits) { (($!var +< $bits) +& $!mask ) +| ($!var +> ($!bits - $bits)) }
+method rol (Int $bits) { 
+    self.clone(:var(
+        (($!var +< $bits) +& $!mask ) +| ($!var +> ($!bits - $bits))
+    ))
+}
 
 # ones complement
-method C1 { $!mask +^ $!var }
+method C1 { 
+    self.clone(:var(
+        $!mask +^ $!var 
+    ))
+}
 
 # twos complement
-method C2 { $!mask +^ $!var + 1 }
+method C2 { 
+    self.clone(:var(
+        $!mask +^ $!var + 1 
+    ))
+}
 
 # treat the fixed-sized int as a signed int and return the "signed" value.
 method signed {
-    ($!var +& 2**($!bits - 1)) ??
-    -(($!var +& ($!mask +> 1)) +^ ($!mask +> 1) + 1) !!
-    $!var
+    self.clone(:var(
+        ($!var +& 2**($!bits - 1)) ??
+        -(($!var +& ($!mask +> 1)) +^ ($!mask +> 1) + 1) !!
+        $!var
+    ))
 }
 
 # return a binary formatted IntStr
@@ -35,7 +53,11 @@ method oct { "0o{$!var.Str.fmt('%0' ~ ceiling($!bits / 3) ~ 'o')}" }
 # return a hex formatted IntStr
 method hex { "0x{$!var.Str.fmt('%0' ~ ceiling($!bits / 4) ~ 'X')}" }
 
+multi sub infix:<->(FixedInt:D \l, Numeric:D \r --> FixedInt ) is rw is export { FixedInt.new: :var((l.var - r) +& l.mask), :bits(l.bits), :mask(l.mask) }
+multi sub infix:<+>(FixedInt:D \l, Numeric:D \r --> FixedInt ) is rw is export { FixedInt.new: :var((l.var + r) +& l.mask), :bits(l.bits), :mask(l.mask) }
 
+multi sub infix:«+>»(FixedInt:D \l, Numeric:D \r --> FixedInt ) is rw is export { FixedInt.new: :var((l.var +> r) +& l.mask), :bits(l.bits), :mask(l.mask) }
+multi sub infix:«+<»(FixedInt:D \l, Numeric:D \r --> FixedInt ) is rw is export { FixedInt.new: :var((l.var +< r) +& l.mask), :bits(l.bits), :mask(l.mask) }
 
 =begin pod
 
